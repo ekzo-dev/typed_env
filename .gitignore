@@ -5,6 +5,8 @@
 /coverage/
 /doc/
 /pkg/
+# built gems (`gem build` writes them here)
+*.gem
 /spec/reports/
 /tmp/
 
