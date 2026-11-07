@@ -1,4 +1,4 @@
-# EnvSettings
+# TypedEnv
 
 Type-safe environment variables management for Ruby applications with a clean DSL inspired by rails-settings-cached.
 
@@ -20,7 +20,7 @@ Type-safe environment variables management for Ruby applications with a clean DS
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'env_settings'
+gem 'typed_env'
 ```
 
 And then execute:
@@ -32,18 +32,18 @@ bundle install
 Or install it yourself as:
 
 ```bash
-gem install env_settings
+gem install typed_env
 ```
 
 ## Usage
 
 ### Basic Setup
 
-Create a class that inherits from `EnvSettings::Base` and define your environment variables:
+Create a class that inherits from `TypedEnv::Base` and define your environment variables:
 
 ```ruby
 
-class Env < EnvSettings::Base
+class Env < TypedEnv::Base
   var :app_name, type: :string, default: "MyApp"
   var :port, type: :integer, default: 3000
   var :debug, type: :boolean, default: false
@@ -79,10 +79,10 @@ Env.to_h              # Same as .all
 
 ```ruby
 # This will raise ReadOnlyError
-Env.app_name = "NewApp" # Raises EnvSettings::ReadOnlyError
+Env.app_name = "NewApp" # Raises TypedEnv::ReadOnlyError
 
 # To make a variable writable, provide a writer callback
-class Env < EnvSettings::Base
+class Env < TypedEnv::Base
   var :app_name,
       type: :string,
       default: "MyApp",
@@ -223,13 +223,13 @@ var :api_key, validates: {
 # Validate all settings at once
 Env.validate!
 
-# Will raise EnvSettings::ValidationError if any validation fails
+# Will raise TypedEnv::ValidationError if any validation fails
 ```
 
 It's recommended to run validations during application initialization:
 
 ```ruby
-# config/initializers/env_settings.rb (Rails)
+# config/initializers/typed_env.rb (Rails)
 Env.validate!
 ```
 
@@ -238,8 +238,8 @@ Env.validate!
 When you assign a value to a variable with validations, it's automatically validated **before** writing to storage:
 
 ```ruby
-class Env < EnvSettings::Base
-  default_writer ->(value, setting) { Setting.find_or_create_by(key: key).update!(value: value) }
+class Env < TypedEnv::Base
+  default_writer ->(value, setting) { Setting.find_or_create_by(key: setting[:env_key]).update!(value: value) }
 
   var :username,
       type: :string,
@@ -264,7 +264,7 @@ This prevents invalid data from being stored and ensures data integrity at the a
 
 ## ActiveModel Validations (Optional)
 
-EnvSettings automatically uses ActiveModel validations if `activemodel` gem is available. This provides:
+TypedEnv automatically uses ActiveModel validations if `activemodel` gem is available. This provides:
 
 - More validation options (numericality, comparison, exclusion, etc.)
 - Better error messages with I18n support
@@ -275,14 +275,14 @@ EnvSettings automatically uses ActiveModel validations if `activemodel` gem is a
 
 ```ruby
 # Gemfile
-gem 'env_settings'
+gem 'typed_env'
 gem 'activemodel'  # Optional, but recommended for Rails projects
 ```
 
 ### ActiveModel Validation Examples
 
 ```ruby
-class Env < EnvSettings::Base
+class Env < TypedEnv::Base
   # Numericality validation
   var :port,
       type: :integer,
@@ -328,7 +328,7 @@ end
 
 ### Validation Syntax
 
-EnvSettings uses **ActiveModel-compatible validation syntax**. This means:
+TypedEnv uses **ActiveModel-compatible validation syntax**. This means:
 
 - **With ActiveModel** (`activemodel` gem installed): Full ActiveModel validations with rich features
 - **Without ActiveModel**: Built-in simple validations with the same syntax but limited to: `presence`, `length`, `format`, `inclusion`
@@ -360,7 +360,7 @@ Create an initializer:
 
 ```ruby
 # config/initializers/var.rb
-class Env < EnvSettings::Base
+class Env < TypedEnv::Base
   var :app_name, type: :string, default: "MyRailsApp"
   var :port, type: :integer, default: 3000
   var :database_url, type: :string, validates: { presence: true }
@@ -396,13 +396,13 @@ end
 
 ## Custom Reader/Writer Callbacks
 
-EnvSettings allows you to define custom callbacks for reading and writing variables, enabling flexible storage backends like databases, Redis, or files.
+TypedEnv allows you to define custom callbacks for reading and writing variables, enabling flexible storage backends like databases, Redis, or files.
 
 ### Individual Variable Callbacks
 
 ```ruby
 
-class Env < EnvSettings::Base
+class Env < TypedEnv::Base
   # Read-only from ENV (default behavior)
   var :database_url, type: :string, validates: { presence: true }
 
@@ -437,7 +437,7 @@ Set default reader/writer for all variables:
 
 ```ruby
 
-class Env < EnvSettings::Base
+class Env < TypedEnv::Base
   # All variables will use these callbacks by default
   default_reader ->(setting) {
     Setting.find_by(key: setting[:env_key])&.value || ENV[setting[:env_key]]
@@ -459,7 +459,7 @@ class Env < EnvSettings::Base
 end
 
 # Block syntax is also supported
-class Env < EnvSettings::Base
+class Env < TypedEnv::Base
   default_reader do |setting|
     Setting.find_by(key: setting[:env_key])&.value || ENV[setting[:env_key]]
   end
@@ -474,8 +474,9 @@ end
 
 Callbacks receive the following parameters:
 
-- `key` - The uppercase ENV key (e.g., "API_KEY")
-- `setting` - Full configuration hash with: `:type`, `:default`, `:validates`, `:env_key`, etc.
+- `value` (writer only) - The value being written, already validated
+- `setting` - Full configuration hash with: `:type`, `:default`, `:validates`, `:env_key` (the uppercase ENV key,
+  e.g. "API_KEY"), etc.
 
 **Reader callback:**
 ```ruby
@@ -499,7 +500,7 @@ writer: ->(value, setting) {
 
 ```ruby
 
-class Env < EnvSettings::Base
+class Env < TypedEnv::Base
   default_reader ->(setting) {
     Setting.find_by(key: setting[:env_key])&.value || ENV[setting[:env_key]]
   }
@@ -517,7 +518,7 @@ end
 
 ```ruby
 
-class Env < EnvSettings::Base
+class Env < TypedEnv::Base
   default_reader ->(setting) {
     Redis.current.get("app:settings:#{setting[:env_key]}")
   }
@@ -535,7 +536,7 @@ end
 
 ```ruby
 
-class Env < EnvSettings::Base
+class Env < TypedEnv::Base
   SETTINGS_FILE = "config/runtime_settings.yml"
 
   default_reader ->(setting) {
@@ -557,7 +558,7 @@ end
 
 ```ruby
 
-class Env < EnvSettings::Base
+class Env < TypedEnv::Base
   var :api_key,
       type: :string,
       reader: ->(setting) {
@@ -573,7 +574,7 @@ end
 
 ```ruby
 
-class Env < EnvSettings::Base
+class Env < TypedEnv::Base
   # Default: read from ENV (no writer = read-only)
   var :database_url, type: :string, validates: { presence: true }
 
@@ -619,8 +620,8 @@ class Setting < ApplicationRecord
   end
 end
 
-# EnvSettings configuration
-class Env < EnvSettings::Base
+# TypedEnv configuration
+class Env < TypedEnv::Base
   default_reader ->(setting) { Setting.get(setting[:env_key]) || ENV[setting[:env_key]] }
   default_writer ->(value, setting) { Setting.set(setting[:env_key], value) }
 
@@ -643,7 +644,7 @@ end
 Fast feature flags with minimal latency:
 
 ```ruby
-class Env < EnvSettings::Base
+class Env < TypedEnv::Base
   var :feature_flags,
       type: :hash,
       default: {},
@@ -672,7 +673,7 @@ end
 #### Caching Expensive Operations
 
 ```ruby
-class Env < EnvSettings::Base
+class Env < TypedEnv::Base
   @vault_cache = {}
 
   var :secret_key,
@@ -688,7 +689,7 @@ end
 #### Logging Changes
 
 ```ruby
-class Env < EnvSettings::Base
+class Env < TypedEnv::Base
   default_writer ->(value, setting) {
     old_value = Setting.get(setting[:env_key])
     Setting.set(setting[:env_key], value)
@@ -706,7 +707,7 @@ end
 # ReadOnlyError is raised when trying to write without a writer
 begin
   Env.database_url = "new_url"
-rescue EnvSettings::ReadOnlyError => e
+rescue TypedEnv::ReadOnlyError => e
   puts e.message
   # => "Cannot write to 'database_url': variable is read-only. Provide a writer callback to enable writing."
 end
@@ -726,7 +727,7 @@ ALLOWED_HOSTS = ENV.fetch('ALLOWED_HOSTS', '').split(',').map(&:strip)
 
 ```ruby
 
-class Env < EnvSettings::Base
+class Env < TypedEnv::Base
   var :database_url, validates: { presence: true }
   var :port, type: :integer, default: 3000
   var :debug, type: :boolean, default: false
@@ -751,7 +752,7 @@ bundle exec rspec
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/ekzo-dev/env_settings.
+Bug reports and pull requests are welcome on GitHub at https://github.com/ekzo-dev/typed_env.
 
 ## License
 

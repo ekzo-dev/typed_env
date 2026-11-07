@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-RSpec.describe EnvSettings::Base, "validation on write" do
+RSpec.describe TypedEnv::Base, "validation on write" do
   before do
     ENV.clear
   end
@@ -12,7 +12,7 @@ RSpec.describe EnvSettings::Base, "validation on write" do
 
     let(:test_class) do
       test_storage = storage
-      Class.new(EnvSettings::Base) do
+      Class.new(TypedEnv::Base) do
         var :username,
             type: :string,
             validates: { presence: true, length: { minimum: 3, maximum: 20 } },
@@ -33,14 +33,14 @@ RSpec.describe EnvSettings::Base, "validation on write" do
     context "presence validation" do
       it "raises error when assigning nil" do
         expect { test_class.username = nil }.to raise_error(
-          EnvSettings::ValidationError,
+          TypedEnv::ValidationError,
           /can't be blank/
         )
       end
 
       it "raises error when assigning empty string" do
         expect { test_class.username = "" }.to raise_error(
-          EnvSettings::ValidationError,
+          TypedEnv::ValidationError,
           /can't be blank/
         )
       end
@@ -51,7 +51,7 @@ RSpec.describe EnvSettings::Base, "validation on write" do
       end
 
       it "does not write invalid value to storage" do
-        expect { test_class.username = nil }.to raise_error(EnvSettings::ValidationError)
+        expect { test_class.username = nil }.to raise_error(TypedEnv::ValidationError)
         expect(storage["USERNAME"]).to be_nil
       end
     end
@@ -59,14 +59,14 @@ RSpec.describe EnvSettings::Base, "validation on write" do
     context "length validation" do
       it "raises error when value too short" do
         expect { test_class.username = "ab" }.to raise_error(
-          EnvSettings::ValidationError,
+          TypedEnv::ValidationError,
           /too short/
         )
       end
 
       it "raises error when value too long" do
         expect { test_class.username = "a" * 21 }.to raise_error(
-          EnvSettings::ValidationError,
+          TypedEnv::ValidationError,
           /too long/
         )
       end
@@ -80,7 +80,7 @@ RSpec.describe EnvSettings::Base, "validation on write" do
     context "format validation" do
       it "raises error for invalid format" do
         expect { test_class.email = "invalid-email" }.to raise_error(
-          EnvSettings::ValidationError,
+          TypedEnv::ValidationError,
           /is invalid/
         )
       end
@@ -94,7 +94,7 @@ RSpec.describe EnvSettings::Base, "validation on write" do
     context "inclusion validation" do
       it "raises error for value not in list" do
         expect { test_class.role = "superadmin" }.to raise_error(
-          EnvSettings::ValidationError,
+          TypedEnv::ValidationError,
           /not included in the list/
         )
       end
@@ -111,7 +111,7 @@ RSpec.describe EnvSettings::Base, "validation on write" do
 
     let(:test_class) do
       test_storage = storage
-      Class.new(EnvSettings::Base) do
+      Class.new(TypedEnv::Base) do
         var :age,
             type: :integer,
             validates: { numericality: { greater_than: 0, less_than: 150 } },
@@ -128,7 +128,7 @@ RSpec.describe EnvSettings::Base, "validation on write" do
       skip "ActiveModel not available" unless defined?(ActiveModel::Validations)
 
       expect { test_class.age = -5 }.to raise_error(
-        EnvSettings::ValidationError,
+        TypedEnv::ValidationError,
         /must be greater than 0/
       )
     end
@@ -144,7 +144,7 @@ RSpec.describe EnvSettings::Base, "validation on write" do
       skip "ActiveModel not available" unless defined?(ActiveModel::Validations)
 
       expect { test_class.score = 150 }.to raise_error(
-        EnvSettings::ValidationError,
+        TypedEnv::ValidationError,
         /must be less than or equal to 100/
       )
     end
@@ -155,7 +155,7 @@ RSpec.describe EnvSettings::Base, "validation on write" do
 
     let(:test_class) do
       test_storage = storage
-      Class.new(EnvSettings::Base) do
+      Class.new(TypedEnv::Base) do
         var :free_text,
             type: :string,
             writer: ->(value, setting) { test_storage[setting[:env_key]] = value }
@@ -174,7 +174,7 @@ RSpec.describe EnvSettings::Base, "validation on write" do
 
     let(:test_class) do
       test_storage = storage
-      Class.new(EnvSettings::Base) do
+      Class.new(TypedEnv::Base) do
         default_writer ->(value, setting) { test_storage[setting[:env_key]] = value }
 
         var :username,
@@ -185,7 +185,7 @@ RSpec.describe EnvSettings::Base, "validation on write" do
 
     it "validates when using default_writer" do
       expect { test_class.username = "ab" }.to raise_error(
-        EnvSettings::ValidationError,
+        TypedEnv::ValidationError,
         /too short/
       )
     end

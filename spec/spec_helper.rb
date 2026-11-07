@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "env_settings"
+require "typed_env"
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure

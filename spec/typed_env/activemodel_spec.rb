@@ -2,14 +2,14 @@
 
 require "spec_helper"
 
-RSpec.describe EnvSettings::Base, "ActiveModel integration" do
+RSpec.describe TypedEnv::Base, "ActiveModel integration" do
   before do
     ENV.clear
   end
 
   context "when ActiveModel is available" do
     it "uses ActiveModel::Validations through validator_class" do
-      test_class = Class.new(EnvSettings::Base) do
+      test_class = Class.new(TypedEnv::Base) do
         var :test, validates: { presence: true }
       end
 
@@ -18,7 +18,7 @@ RSpec.describe EnvSettings::Base, "ActiveModel integration" do
 
     describe "numericality validation" do
       let(:test_class) do
-        Class.new(EnvSettings::Base) do
+        Class.new(TypedEnv::Base) do
           var :age,
               type: :integer,
               default: 0,
@@ -44,7 +44,7 @@ RSpec.describe EnvSettings::Base, "ActiveModel integration" do
       it "validates numericality with greater_than" do
         ENV["AGE"] = "0"
         expect { test_class.validate! }.to raise_error(
-          EnvSettings::ValidationError,
+          TypedEnv::ValidationError,
           /Age must be greater than 0/
         )
       end
@@ -52,7 +52,7 @@ RSpec.describe EnvSettings::Base, "ActiveModel integration" do
       it "validates numericality with less_than" do
         ENV["AGE"] = "150"
         expect { test_class.validate! }.to raise_error(
-          EnvSettings::ValidationError,
+          TypedEnv::ValidationError,
           /Age must be less than 150/
         )
       end
@@ -66,7 +66,7 @@ RSpec.describe EnvSettings::Base, "ActiveModel integration" do
       it "validates float numericality" do
         ENV["PRICE"] = "-10.5"
         expect { test_class.validate! }.to raise_error(
-          EnvSettings::ValidationError,
+          TypedEnv::ValidationError,
           /Price must be greater than or equal to 0/
         )
       end
@@ -74,7 +74,7 @@ RSpec.describe EnvSettings::Base, "ActiveModel integration" do
 
     describe "comparison validation" do
       let(:test_class) do
-        Class.new(EnvSettings::Base) do
+        Class.new(TypedEnv::Base) do
           var :min_value,
               type: :integer,
               default: 0
@@ -93,7 +93,7 @@ RSpec.describe EnvSettings::Base, "ActiveModel integration" do
         ENV["MAX_VALUE"] = "30"
 
         expect { test_class.validate! }.to raise_error(
-          EnvSettings::ValidationError,
+          TypedEnv::ValidationError,
           /Max value must be greater than 50/
         )
       end
@@ -107,7 +107,7 @@ RSpec.describe EnvSettings::Base, "ActiveModel integration" do
 
     describe "exclusion validation" do
       let(:test_class) do
-        Class.new(EnvSettings::Base) do
+        Class.new(TypedEnv::Base) do
           var :username,
               type: :string,
               validates: {
@@ -119,7 +119,7 @@ RSpec.describe EnvSettings::Base, "ActiveModel integration" do
       it "validates exclusion" do
         ENV["USERNAME"] = "admin"
         expect { test_class.validate! }.to raise_error(
-          EnvSettings::ValidationError,
+          TypedEnv::ValidationError,
           /Username is reserved/
         )
       end
@@ -132,7 +132,7 @@ RSpec.describe EnvSettings::Base, "ActiveModel integration" do
 
     describe "absence validation" do
       let(:test_class) do
-        Class.new(EnvSettings::Base) do
+        Class.new(TypedEnv::Base) do
           var :legacy_field,
               type: :string,
               validates: {
@@ -144,7 +144,7 @@ RSpec.describe EnvSettings::Base, "ActiveModel integration" do
       it "validates absence" do
         ENV["LEGACY_FIELD"] = "value"
         expect { test_class.validate! }.to raise_error(
-          EnvSettings::ValidationError,
+          TypedEnv::ValidationError,
           /Legacy field must be blank/
         )
       end
@@ -156,7 +156,7 @@ RSpec.describe EnvSettings::Base, "ActiveModel integration" do
 
     describe "unified validation syntax" do
       let(:test_class) do
-        Class.new(EnvSettings::Base) do
+        Class.new(TypedEnv::Base) do
           var :username,
               validates: {
                 presence: true,
@@ -178,7 +178,7 @@ RSpec.describe EnvSettings::Base, "ActiveModel integration" do
 
       it "validates presence" do
         expect { test_class.validate! }.to raise_error(
-          EnvSettings::ValidationError,
+          TypedEnv::ValidationError,
           /Username can't be blank/
         )
       end
@@ -188,7 +188,7 @@ RSpec.describe EnvSettings::Base, "ActiveModel integration" do
         ENV["EMAIL"] = "test@example.com"
 
         expect { test_class.validate! }.to raise_error(
-          EnvSettings::ValidationError,
+          TypedEnv::ValidationError,
           /Username is too short/
         )
       end
@@ -198,7 +198,7 @@ RSpec.describe EnvSettings::Base, "ActiveModel integration" do
         ENV["EMAIL"] = "invalid-email"
 
         expect { test_class.validate! }.to raise_error(
-          EnvSettings::ValidationError,
+          TypedEnv::ValidationError,
           /Email is invalid/
         )
       end
@@ -209,7 +209,7 @@ RSpec.describe EnvSettings::Base, "ActiveModel integration" do
         ENV["ENVIRONMENT"] = "staging"
 
         expect { test_class.validate! }.to raise_error(
-          EnvSettings::ValidationError,
+          TypedEnv::ValidationError,
           /Environment is not included in the list/
         )
       end
@@ -225,7 +225,7 @@ RSpec.describe EnvSettings::Base, "ActiveModel integration" do
 
     describe "mixed ActiveModel and custom validations" do
       let(:test_class) do
-        Class.new(EnvSettings::Base) do
+        Class.new(TypedEnv::Base) do
           # ActiveModel numericality
           var :port,
               type: :integer,
@@ -248,7 +248,7 @@ RSpec.describe EnvSettings::Base, "ActiveModel integration" do
       it "validates both ActiveModel and converted validations" do
         ENV["PORT"] = "70000"
         expect { test_class.validate! }.to raise_error(
-          EnvSettings::ValidationError,
+          TypedEnv::ValidationError,
           /Port must be less than 65536/
         )
       end
@@ -256,7 +256,7 @@ RSpec.describe EnvSettings::Base, "ActiveModel integration" do
       it "validates converted presence" do
         ENV["PORT"] = "3000"
         expect { test_class.validate! }.to raise_error(
-          EnvSettings::ValidationError,
+          TypedEnv::ValidationError,
           /Database url can't be blank/
         )
       end
@@ -281,7 +281,7 @@ RSpec.describe EnvSettings::Base, "ActiveModel integration" do
       end
 
       let(:test_class) do
-        Class.new(EnvSettings::Base) do
+        Class.new(TypedEnv::Base) do
           var :api_endpoint,
               type: :string,
               validates: { url: true }
@@ -291,7 +291,7 @@ RSpec.describe EnvSettings::Base, "ActiveModel integration" do
       it "uses custom validator" do
         ENV["API_ENDPOINT"] = "invalid-url"
         expect { test_class.validate! }.to raise_error(
-          EnvSettings::ValidationError,
+          TypedEnv::ValidationError,
           /must be a valid URL/
         )
       end
@@ -305,7 +305,7 @@ RSpec.describe EnvSettings::Base, "ActiveModel integration" do
 
   describe "error messages" do
     let(:test_class) do
-      Class.new(EnvSettings::Base) do
+      Class.new(TypedEnv::Base) do
         var :username,
             validates: {
               presence: true,
@@ -323,7 +323,7 @@ RSpec.describe EnvSettings::Base, "ActiveModel integration" do
     it "combines multiple validation errors" do
       ENV["AGE"] = "0"
 
-      expect { test_class.validate! }.to raise_error(EnvSettings::ValidationError) do |error|
+      expect { test_class.validate! }.to raise_error(TypedEnv::ValidationError) do |error|
         expect(error.message).to include("Username can't be blank")
         expect(error.message).to include("Age must be greater than 0")
       end

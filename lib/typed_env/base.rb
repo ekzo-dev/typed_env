@@ -6,7 +6,7 @@ rescue LoadError
   # ActiveModel is optional
 end
 
-module EnvSettings
+module TypedEnv
   class Error < StandardError; end
   class ValidationError < Error; end
   class ReadOnlyError < Error; end
@@ -25,11 +25,11 @@ module EnvSettings
           writer: writer
         }
 
-        # Register ActiveModel validations if available
-        if defined?(ActiveModel::Validations) && validates
-          ensure_validator_class!
-          validator_class.add_attribute(name, self)
-          # Always use ActiveModel if available
+        # Register ActiveModel validations if available. Every var gets an accessor on the validator once it exists, so a
+        # rule of one may read another (`if: -> { other }`) whichever was declared first.
+        if defined?(ActiveModel::Validations)
+          ensure_validator_class! if validates
+          validator_class&.add_attribute(name, self)
           validator_class.validates name, **validates if validates.is_a?(Hash)
         end
 
@@ -71,42 +71,34 @@ module EnvSettings
           include ActiveModel::Validations if defined?(ActiveModel::Validations)
           include ActiveModel::Model if defined?(ActiveModel::Model)
 
-          # Define methods for reading values
-          parent_class.settings.keys.each do |key|
-            define_method(key) do
-              # Check if value is set on instance, otherwise read from parent
-              ivar = "@#{key}"
-              if instance_variable_defined?(ivar)
-                instance_variable_get(ivar)
-              else
-                parent_class.get_value(key)
-              end
-            end
-
-            define_method("#{key}=") do |value|
-              instance_variable_set("@#{key}", value)
-            end
+          # Values being validated, kept in one hash rather than an instance variable per setting: an instance
+          # gets one value (validate_var!) and every setting a validator of its own, so per-setting variables
+          # gave the class a shape per setting, which Ruby warns of from the eighth on.
+          def initialize(*)
+            @values = {}
+            super
           end
 
           # Method to add new vars
           def self.add_attribute(name, parent_class)
+            # Check if value is set on instance, otherwise read from parent
             define_method(name) do
-              ivar = "@#{name}"
-              if instance_variable_defined?(ivar)
-                instance_variable_get(ivar)
-              else
-                parent_class.get_value(name)
-              end
+              @values.key?(name) ? @values[name] : parent_class.get_value(name)
             end
 
             define_method("#{name}=") do |value|
-              instance_variable_set("@#{name}", value)
+              @values[name] = value
             end
+          end
+
+          # Accessors for the settings defined so far; later ones come through add_attribute
+          parent_class.settings.keys.each do |key|
+            add_attribute(key, parent_class)
           end
 
           # For ActiveModel error messages
           def self.model_name
-            ActiveModel::Name.new(self, nil, "EnvSettings")
+            ActiveModel::Name.new(self, nil, "TypedEnv")
           end
         end
       end
@@ -220,18 +212,12 @@ module EnvSettings
 
         # Use ActiveModel validations if available
         if defined?(ActiveModel::Validations) && validator_class
-          # Use existing validator_class for full validation context
+          # The value being validated in place of the stored one; the others as they are, which rules that read
+          # another var need. ActiveModel cannot run one attribute's validators alone and keep their `if:`/`unless:`
+          # (`validate(name)` would take `name` for a validation context), so all run and this var's errors are read.
           instance = validator_class.new
-
-          # Set the value being validated
-          instance.send("#{name}=", value)
-
-          # Validate only the specified attribute (Rails 7.1+)
-          if instance.respond_to?(:validate)
-            instance.validate(name)
-          else
-            instance.valid?
-          end
+          instance.public_send("#{name}=", value)
+          instance.valid?
 
           attribute_errors = instance.errors[name]
 
@@ -286,18 +272,18 @@ module EnvSettings
       end
 
       def validate!
-        # Use ActiveModel validations if available
+        # With ActiveModel: every var's rules at once, every failure in one error
         if defined?(ActiveModel::Validations) && validator_class
           instance = validator_class.new
-          unless instance.valid?
-            errors = instance.errors.full_messages.join(", ")
-            raise ValidationError, errors
-          end
+          raise ValidationError, instance.errors.full_messages.join(", ") unless instance.valid?
+
+          return
         end
 
-        # Run simple validations (when ActiveModel is not available)
+        # Without it: the simple validations, var by var
         settings.each do |name, config|
           next unless config[:validates]
+
           validate_var!(name, get_value(name))
         end
       end

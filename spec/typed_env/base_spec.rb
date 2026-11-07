@@ -2,9 +2,9 @@
 
 require "spec_helper"
 
-RSpec.describe EnvSettings::Base do
+RSpec.describe TypedEnv::Base do
   let(:test_class) do
-    Class.new(EnvSettings::Base) do
+    Class.new(TypedEnv::Base) do
       var :app_name, type: :string, default: "TestApp"
       var :port, type: :integer, default: 3000
       var :debug, type: :boolean, default: false
@@ -122,21 +122,21 @@ RSpec.describe EnvSettings::Base do
   describe "setter methods" do
     it "raises ReadOnlyError when no writer is defined" do
       expect { test_class.app_name = "NewApp" }.to raise_error(
-        EnvSettings::ReadOnlyError,
+        TypedEnv::ReadOnlyError,
         /Cannot write to 'app_name': variable is read-only/
       )
     end
 
     it "raises ReadOnlyError for integer type without writer" do
       expect { test_class.port = 8080 }.to raise_error(
-        EnvSettings::ReadOnlyError,
+        TypedEnv::ReadOnlyError,
         /Cannot write to 'port': variable is read-only/
       )
     end
 
     context "with custom writer" do
       let(:writable_class) do
-        Class.new(EnvSettings::Base) do
+        Class.new(TypedEnv::Base) do
           var :app_name,
               type: :string,
               default: "TestApp",
@@ -165,7 +165,7 @@ RSpec.describe EnvSettings::Base do
     context "presence validation" do
       it "raises error when required field is missing" do
         expect { test_class.validate! }.to raise_error(
-          EnvSettings::ValidationError,
+          TypedEnv::ValidationError,
           /Database url can't be blank/
         )
       end
@@ -178,7 +178,7 @@ RSpec.describe EnvSettings::Base do
 
     context "length validation" do
       let(:test_class_with_length) do
-        Class.new(EnvSettings::Base) do
+        Class.new(TypedEnv::Base) do
           var :username, validates: { length: { minimum: 3, maximum: 20 } }
         end
       end
@@ -186,7 +186,7 @@ RSpec.describe EnvSettings::Base do
       it "raises error when value is too short" do
         ENV["USERNAME"] = "ab"
         expect { test_class_with_length.validate! }.to raise_error(
-          EnvSettings::ValidationError,
+          TypedEnv::ValidationError,
           /too short/
         )
       end
@@ -194,7 +194,7 @@ RSpec.describe EnvSettings::Base do
       it "raises error when value is too long" do
         ENV["USERNAME"] = "a" * 25
         expect { test_class_with_length.validate! }.to raise_error(
-          EnvSettings::ValidationError,
+          TypedEnv::ValidationError,
           /too long/
         )
       end
@@ -207,7 +207,7 @@ RSpec.describe EnvSettings::Base do
 
     context "format validation" do
       let(:test_class_with_format) do
-        Class.new(EnvSettings::Base) do
+        Class.new(TypedEnv::Base) do
           var :email, validates: { format: { with: /\A[\w+\-.]+@[a-z\d\-]+(\.[a-z\d\-]+)*\.[a-z]+\z/i } }
         end
       end
@@ -215,7 +215,7 @@ RSpec.describe EnvSettings::Base do
       it "raises error when format is invalid" do
         ENV["EMAIL"] = "invalid-email"
         expect { test_class_with_format.validate! }.to raise_error(
-          EnvSettings::ValidationError,
+          TypedEnv::ValidationError,
           /Email is invalid/
         )
       end
@@ -228,7 +228,7 @@ RSpec.describe EnvSettings::Base do
 
     context "inclusion validation" do
       let(:test_class_with_inclusion) do
-        Class.new(EnvSettings::Base) do
+        Class.new(TypedEnv::Base) do
           var :environment, validates: { inclusion: { in: %w[development test production] } }
         end
       end
@@ -236,7 +236,7 @@ RSpec.describe EnvSettings::Base do
       it "raises error when value is not in list" do
         ENV["ENVIRONMENT"] = "staging"
         expect { test_class_with_inclusion.validate! }.to raise_error(
-          EnvSettings::ValidationError,
+          TypedEnv::ValidationError,
           /is not included in the list/
         )
       end

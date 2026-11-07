@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-RSpec.describe EnvSettings::Base, "callbacks" do
+RSpec.describe TypedEnv::Base, "callbacks" do
   before do
     ENV.clear
   end
@@ -12,7 +12,7 @@ RSpec.describe EnvSettings::Base, "callbacks" do
 
     let(:test_class) do
       test_storage = storage
-      Class.new(EnvSettings::Base) do
+      Class.new(TypedEnv::Base) do
         var :api_key,
             type: :string,
             default: "default_key",
@@ -52,7 +52,7 @@ RSpec.describe EnvSettings::Base, "callbacks" do
 
     let(:test_class) do
       test_storage = storage
-      Class.new(EnvSettings::Base) do
+      Class.new(TypedEnv::Base) do
         var :api_key,
             type: :string,
             default: "default_key",
@@ -90,7 +90,7 @@ RSpec.describe EnvSettings::Base, "callbacks" do
 
   describe "read-only variables (no writer)" do
     let(:test_class) do
-      Class.new(EnvSettings::Base) do
+      Class.new(TypedEnv::Base) do
         var :database_url, type: :string, default: "default_db"
 
         var :api_endpoint,
@@ -101,14 +101,14 @@ RSpec.describe EnvSettings::Base, "callbacks" do
 
     it "raises ReadOnlyError when trying to write to variable without writer" do
       expect { test_class.database_url = "new_url" }.to raise_error(
-        EnvSettings::ReadOnlyError,
+        TypedEnv::ReadOnlyError,
         /Cannot write to 'database_url': variable is read-only/
       )
     end
 
     it "raises ReadOnlyError for custom reader without writer" do
       expect { test_class.api_endpoint = "new_url" }.to raise_error(
-        EnvSettings::ReadOnlyError,
+        TypedEnv::ReadOnlyError,
         /Cannot write to 'api_endpoint': variable is read-only/
       )
     end
@@ -119,7 +119,7 @@ RSpec.describe EnvSettings::Base, "callbacks" do
 
     let(:test_class) do
       test_storage = storage
-      Class.new(EnvSettings::Base) do
+      Class.new(TypedEnv::Base) do
         # Set default reader for all variables
         default_reader ->(setting) { test_storage[setting[:env_key]] || ENV[setting[:env_key]] }
 
@@ -159,7 +159,7 @@ RSpec.describe EnvSettings::Base, "callbacks" do
 
     let(:test_class) do
       test_storage = storage
-      Class.new(EnvSettings::Base) do
+      Class.new(TypedEnv::Base) do
         # Set default writer for all variables
         default_reader ->(setting) { test_storage[setting[:env_key]] }
         default_writer ->(value, setting) { test_storage[setting[:env_key]] = value }
@@ -196,7 +196,7 @@ RSpec.describe EnvSettings::Base, "callbacks" do
 
     let(:test_class) do
       test_storage = storage
-      Class.new(EnvSettings::Base) do
+      Class.new(TypedEnv::Base) do
         default_reader do |setting|
           test_storage[setting[:env_key]]
         end
@@ -216,7 +216,7 @@ RSpec.describe EnvSettings::Base, "callbacks" do
 
     let(:test_class) do
       test_storage = storage
-      Class.new(EnvSettings::Base) do
+      Class.new(TypedEnv::Base) do
         default_reader { |setting| test_storage[setting[:env_key]] }
         default_writer { |value, setting| test_storage[setting[:env_key]] = value }
 
@@ -235,7 +235,7 @@ RSpec.describe EnvSettings::Base, "callbacks" do
 
     let(:test_class) do
       captured = captured_settings
-      Class.new(EnvSettings::Base) do
+      Class.new(TypedEnv::Base) do
         var :api_key,
             type: :string,
             default: "default_key",
@@ -263,7 +263,7 @@ RSpec.describe EnvSettings::Base, "callbacks" do
 
     let(:test_class) do
       test_storage = storage
-      Class.new(EnvSettings::Base) do
+      Class.new(TypedEnv::Base) do
         # Default reader but no default writer
         default_reader ->(setting) { test_storage[setting[:env_key]] || ENV[setting[:env_key]] }
 
@@ -288,7 +288,7 @@ RSpec.describe EnvSettings::Base, "callbacks" do
       expect(test_class.database_url).to eq("from_storage")
 
       expect { test_class.database_url = "new_url" }.to raise_error(
-        EnvSettings::ReadOnlyError
+        TypedEnv::ReadOnlyError
       )
     end
 
@@ -309,7 +309,7 @@ RSpec.describe EnvSettings::Base, "callbacks" do
 
   describe "backward compatibility" do
     let(:test_class) do
-      Class.new(EnvSettings::Base) do
+      Class.new(TypedEnv::Base) do
         var :app_name, type: :string, default: "TestApp"
         var :port, type: :integer, default: 3000
       end
@@ -322,7 +322,7 @@ RSpec.describe EnvSettings::Base, "callbacks" do
 
     it "raises ReadOnlyError when trying to write without callbacks" do
       expect { test_class.app_name = "NewApp" }.to raise_error(
-        EnvSettings::ReadOnlyError
+        TypedEnv::ReadOnlyError
       )
     end
 
